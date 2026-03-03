@@ -1,5 +1,6 @@
 const express = require("express");
 const crypto = require("crypto");
+const mongoose = require("mongoose");
 const Appointment = require("../models/Appointment");
 const Doctor = require("../models/Doctor");
 const User = require("../models/User");
@@ -20,6 +21,9 @@ router.post(
     const { doctorId, date, time, telemedicineConsent = false, patientName, patientPhone, patientEmail } = req.body;
     if (!doctorId || !date || !time) {
       return res.status(400).json({ message: "doctorId, date and time are required" });
+    }
+    if (!mongoose.isValidObjectId(doctorId)) {
+      return res.status(400).json({ message: "Invalid doctorId" });
     }
     if (!telemedicineConsent) {
       return res.status(400).json({ message: "Telemedicine consent is required" });
@@ -49,25 +53,33 @@ router.post(
       order = { id: `demo_${crypto.randomUUID()}` };
     }
 
-    const appointment = await Appointment.create({
-      userId: req.user._id,
-      doctorId,
-      date,
-      time,
-      amount,
-      billing: buildBillingBreakdown(
-        {
-          amount,
-          billing: { consultation: amount, lab: 0, medicine: 0, gstPercent: 0 },
-        },
-        {}
-      ),
-      telemedicineConsent: Boolean(telemedicineConsent),
-      razorpayOrderId: order.id,
-      status: "pending",
-      paymentStatus: "pending",
-      type: "telecare",
-    });
+    let appointment;
+    try {
+      appointment = await Appointment.create({
+        userId: req.user._id,
+        doctorId,
+        date,
+        time,
+        amount,
+        billing: buildBillingBreakdown(
+          {
+            amount,
+            billing: { consultation: amount, lab: 0, medicine: 0, gstPercent: 0 },
+          },
+          {}
+        ),
+        telemedicineConsent: Boolean(telemedicineConsent),
+        razorpayOrderId: order.id,
+        status: "pending",
+        paymentStatus: "pending",
+        type: "telecare",
+      });
+    } catch (error) {
+      if (error && error.code === 11000) {
+        return res.status(409).json({ message: "Selected slot is not available" });
+      }
+      throw error;
+    }
 
     return res.status(201).json({
       appointmentId: appointment._id,
