@@ -1,0 +1,54 @@
+
+> jaunpur-care-hub@1.0.0 build
+> next build
+
+  ??? Next.js 14.2.35
+  - Environments: .env
+
+   Creating an optimized production build ...
+ ??? Compiled successfully
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/21) ...
+   Generating static pages (5/21) 
+   Generating static pages (10/21) 
+   Generating static pages (15/21) 
+ ??? Generating static pages (21/21)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+??? ??? /                                    12.4 kB         168 kB
+??? ??? /_not-found                          138 B          87.5 kB
+??? ??? /about                               6.94 kB         157 kB
+??? ??? /api                                 0 B                0 B
+??? ?? /api/[...path]                       0 B                0 B
+??? ??? /blog                                2.36 kB         158 kB
+??? ?? /blog/[slug]                         1.43 kB         152 kB
+??? ??? /booking                             22.8 kB         199 kB
+??? ??? /contact                             7.26 kB         163 kB
+??? ??? /dashboard/admin                     102 kB          268 kB
+??? ??? /dashboard/doctor                    5.25 kB         156 kB
+??? ??? /dashboard/patient                   5.44 kB         156 kB
+??? ??? /doctors                             3.01 kB         153 kB
+??? ?? /doctors/[id]                        1.49 kB         152 kB
+??? ??? /emergency-info                      6.94 kB         157 kB
+??? ??? /login                               2.22 kB         158 kB
+??? ??? /privacy                             826 B           156 kB
+??? ??? /products                            8.93 kB         165 kB
+??? ??? /refund-policy                       637 B           156 kB
+??? ??? /services                            8.21 kB         159 kB
+??? ?? /services/[slug]                     4.24 kB         160 kB
+??? ??? /terms                               693 B           156 kB
+??? ??? /testimonials                        2.92 kB         159 kB
+??? ?? /uploads/[...path]                   0 B                0 B
++ First Load JS shared by all            87.3 kB
+  ??? chunks/117-c7d87f3570487971.js       31.7 kB
+  ??? chunks/fd9d1056-ad15f396ddf9b7e5.js  53.6 kB
+  ??? other shared chunks (total)          1.97 kB
+
+
+???  (Static)   prerendered as static content
+??  (Dynamic)  server-rendered on demand
+
