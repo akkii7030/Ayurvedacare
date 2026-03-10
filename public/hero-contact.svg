@@ -1,0 +1,15 @@
+<svg width="640" height="420" viewBox="0 0 640 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Contact clinic illustration">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1C5FAE"/>
+      <stop offset="100%" stop-color="#6AA5FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="420" rx="28" fill="url(#g)"/>
+  <rect x="40" y="40" width="560" height="340" rx="24" fill="#FFFFFF" opacity="0.12"/>
+  <rect x="220" y="110" width="200" height="240" rx="28" fill="#FFFFFF" opacity="0.95"/>
+  <rect x="250" y="140" width="140" height="160" rx="16" fill="#1C5FAE" opacity="0.15"/>
+  <circle cx="320" cy="310" r="12" fill="#1C5FAE"/>
+  <path d="M360 180 C390 160 420 170 440 200 C420 230 390 240 360 220 Z" fill="#FFFFFF" opacity="0.9"/>
+  <circle cx="420" cy="200" r="18" fill="#1C5FAE" opacity="0.8"/>
+</svg>
