@@ -10,8 +10,20 @@ type RouteContext = {
 };
 
 async function handle(request: Request, { params }: RouteContext) {
-  const pathname = `/api/${params.path.join("/")}`;
-  return handleLegacyApiRequest(request, pathname);
+  try {
+    const pathname = `/api/${params.path.join("/")}`;
+    return await handleLegacyApiRequest(request, pathname);
+  } catch (error) {
+    console.error("API Error:", error);
+    return Response.json(
+      { 
+        error: "Internal Server Error", 
+        message: error instanceof Error ? error.message : "Unknown error",
+        stack: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.stack : undefined) : undefined
+      },
+      { status: 500 }
+    );
+  }
 }
 
 export async function GET(request: Request, context: RouteContext) {

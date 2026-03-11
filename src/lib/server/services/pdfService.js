@@ -4,8 +4,10 @@ const PDFDocument = require("pdfkit");
 const env = require("../config/env");
 
 function generatePrescriptionPdf({ prescription, patientName, doctorName }) {
-  const outputDir = path.join(process.cwd(), "uploads", "prescriptions");
-  fs.mkdirSync(outputDir, { recursive: true });
+  const outputDir = process.env.VERCEL ? "/tmp/prescriptions" : path.join(process.cwd(), "uploads", "prescriptions");
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
   const fileName = `prescription-${prescription._id}.pdf`;
   const filePath = path.join(outputDir, fileName);
   const logoPath = path.join(process.cwd(), "public", "logo.png");
@@ -77,8 +79,10 @@ function generatePrescriptionPdf({ prescription, patientName, doctorName }) {
 }
 
 function generateInvoicePdf({ invoice, appointment, patientName, patientPhone, doctorName, doctorSpecialization }) {
-  const outputDir = path.join(process.cwd(), "uploads", "invoices");
-  fs.mkdirSync(outputDir, { recursive: true });
+  const outputDir = process.env.VERCEL ? "/tmp/invoices" : path.join(process.cwd(), "uploads", "invoices");
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
   const fileName = `invoice-${invoice.invoiceNumber}.pdf`;
   const filePath = path.join(outputDir, fileName);
   const logoPath = path.join(process.cwd(), "public", "logo.png");
