@@ -1,21 +1,23 @@
-const fs = require("fs");
 const path = require("path");
 const PDFDocument = require("pdfkit");
-const env = require("../config/env");
+const { uploadBuffer } = require("./storageService");
 
-function generatePrescriptionPdf({ prescription, patientName, doctorName }) {
-  const outputDir = process.env.VERCEL ? "/tmp/prescriptions" : path.join(process.cwd(), "uploads", "prescriptions");
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
-  }
+function renderPdfToBuffer(doc) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+    doc.end();
+  });
+}
+
+async function generatePrescriptionPdf({ prescription, patientName, doctorName }) {
   const fileName = `prescription-${prescription._id}.pdf`;
-  const filePath = path.join(outputDir, fileName);
   const logoPath = path.join(process.cwd(), "public", "logo.png");
-  const hasLogo = fs.existsSync(logoPath);
+  const hasLogo = require("fs").existsSync(logoPath);
 
   const doc = new PDFDocument({ margin: 50 });
-  const stream = fs.createWriteStream(filePath);
-  doc.pipe(stream);
 
   // Header band
   doc.save().rect(0, 0, doc.page.width, 110).fill("#0D47A1").restore();
@@ -68,29 +70,22 @@ function generatePrescriptionPdf({ prescription, patientName, doctorName }) {
     });
   }
 
-  doc.end();
-  return new Promise((resolve, reject) => {
-    stream.on("finish", () => {
-      const base = String(env.API_PUBLIC_URL || "").replace(/\/+$/, "");
-      resolve(`${base}/uploads/prescriptions/${fileName}`);
-    });
-    stream.on("error", reject);
+  const pdfBuffer = await renderPdfToBuffer(doc);
+  const uploadedPdf = await uploadBuffer({
+    folder: "prescriptions",
+    fileName,
+    buffer: pdfBuffer,
+    contentType: "application/pdf",
   });
+  return uploadedPdf.url;
 }
 
-function generateInvoicePdf({ invoice, appointment, patientName, patientPhone, doctorName, doctorSpecialization }) {
-  const outputDir = process.env.VERCEL ? "/tmp/invoices" : path.join(process.cwd(), "uploads", "invoices");
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
-  }
+async function generateInvoicePdf({ invoice, appointment, patientName, patientPhone, doctorName, doctorSpecialization }) {
   const fileName = `invoice-${invoice.invoiceNumber}.pdf`;
-  const filePath = path.join(outputDir, fileName);
   const logoPath = path.join(process.cwd(), "public", "logo.png");
-  const hasLogo = fs.existsSync(logoPath);
+  const hasLogo = require("fs").existsSync(logoPath);
 
   const doc = new PDFDocument({ margin: 50, size: "A4" });
-  const stream = fs.createWriteStream(filePath);
-  doc.pipe(stream);
 
   doc.save().rect(0, 0, doc.page.width, 160).fill("#0f172a").restore();
 
@@ -137,14 +132,14 @@ function generateInvoicePdf({ invoice, appointment, patientName, patientPhone, d
   doc.fillColor("#0f172a").fontSize(12).font("Helvetica-Bold").text("Grand Total", summaryX, y);
   doc.text(`INR ${Number(invoice.total || 0).toFixed(2)}`, doc.page.width - 150, y, { width: 100, align: "right" });
 
-  doc.end();
-  return new Promise((resolve, reject) => {
-    stream.on("finish", () => {
-      const base = String(env.API_PUBLIC_URL || "").replace(/\/+$/, "");
-      resolve(`${base}/uploads/invoices/${fileName}`);
-    });
-    stream.on("error", reject);
+  const pdfBuffer = await renderPdfToBuffer(doc);
+  const uploadedPdf = await uploadBuffer({
+    folder: "invoices",
+    fileName,
+    buffer: pdfBuffer,
+    contentType: "application/pdf",
   });
+  return uploadedPdf.url;
 }
 
 module.exports = {

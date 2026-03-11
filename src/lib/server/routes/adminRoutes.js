@@ -21,22 +21,22 @@ const { DEFAULT_PERMISSION_MATRIX, normalizeMatrix } = require("../utils/permiss
 const { buildBillingBreakdown } = require("../utils/billing");
 const { ensureInvoiceForAppointment } = require("../services/invoiceService");
 const { sendAppointmentStatusUpdate, sendEmail } = require("../services/notificationService");
+const { listFiles, sanitizePathSegment, uploadBuffer } = require("../services/storageService");
 const { requireAuth, requireRoles, requirePermission } = require("../middleware/auth");
 const asyncHandler = require("../utils/asyncHandler");
 
 const router = express.Router();
 
-const reportsUploadDir = path.join(process.cwd(), "uploads", "reports");
-fs.mkdirSync(reportsUploadDir, { recursive: true });
+function buildStoredFileName(prefix, originalName) {
+  const extension = path.extname(originalName || ".pdf") || ".pdf";
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${sanitizePathSegment(extension, ".pdf")}`;
+}
+
+const reportUploadLimit = process.env.VERCEL ? 4 * 1024 * 1024 : 10 * 1024 * 1024;
+
 const reportUpload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, reportsUploadDir),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname || ".pdf") || ".pdf";
-      cb(null, `report-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`);
-    },
-  }),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: reportUploadLimit },
 });
 
 router.use(requireAuth, requireRoles("admin", "receptionist", "accountant"));
@@ -436,11 +436,15 @@ router.post(
     if (!patient) return res.status(404).json({ message: "Patient not found" });
     if (!req.file) return res.status(400).json({ message: "PDF report file is required" });
 
-    const base = String(env.API_PUBLIC_URL || "").replace(/\/+$/, "");
-    const reportUrl = `${base}/uploads/reports/${req.file.filename}`;
+    const uploadedReport = await uploadBuffer({
+      folder: "reports",
+      fileName: buildStoredFileName("report", req.file.originalname),
+      buffer: req.file.buffer,
+      contentType: req.file.mimetype || "application/pdf",
+    });
     patient.reports.push({
       label: req.body.label || req.file.originalname || "Lab Report",
-      url: reportUrl,
+      url: uploadedReport.url,
       doctorComment: req.body.doctorComment || "",
       commentedBy: req.user?._id,
       commentedAt: req.body.doctorComment ? new Date() : undefined,
@@ -996,11 +1000,8 @@ router.post(
   "/backup/manual",
   requireRoles("admin"),
   asyncHandler(async (req, res) => {
-    const backupDir = path.join(process.cwd(), "uploads", "backups");
-    fs.mkdirSync(backupDir, { recursive: true });
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     const fileName = `backup-${stamp}.json`;
-    const filePath = path.join(backupDir, fileName);
 
     const db = mongoose.connection.db;
     const collections = await db.listCollections({}, { nameOnly: true }).toArray();
@@ -1009,10 +1010,14 @@ router.post(
       const rows = await db.collection(col.name).find({}).toArray();
       data[col.name] = rows;
     }
-    fs.writeFileSync(filePath, JSON.stringify({ generatedAt: new Date().toISOString(), data }, null, 2), "utf8");
-
-    const base = String(env.API_PUBLIC_URL || "").replace(/\/+$/, "");
-    const backupUrl = `${base}/uploads/backups/${fileName}`;
+    const backupPayload = JSON.stringify({ generatedAt: new Date().toISOString(), data }, null, 2);
+    const uploadedBackup = await uploadBuffer({
+      folder: "backups",
+      fileName,
+      buffer: Buffer.from(backupPayload, "utf8"),
+      contentType: "application/json; charset=utf-8",
+    });
+    const backupUrl = uploadedBackup.url;
     await Setting.findOneAndUpdate(
       { key: "backup_last_manual" },
       { key: "backup_last_manual", value: { fileName, backupUrl, generatedAt: new Date().toISOString() } },
@@ -1027,20 +1032,8 @@ router.get(
   "/backup/list",
   requireRoles("admin"),
   asyncHandler(async (_req, res) => {
-    const backupDir = path.join(process.cwd(), "uploads", "backups");
-    fs.mkdirSync(backupDir, { recursive: true });
-    const files = fs
-      .readdirSync(backupDir)
-      .filter((name) => name.endsWith(".json"))
-      .map((name) => {
-        const stat = fs.statSync(path.join(backupDir, name));
-        return { fileName: name, size: stat.size, createdAt: stat.birthtime };
-      })
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    const base = String(env.API_PUBLIC_URL || "").replace(/\/+$/, "");
-    res.json({
-      files: files.map((f) => ({ ...f, downloadUrl: `${base}/uploads/backups/${f.fileName}` })),
-    });
+    const files = await listFiles({ folder: "backups", extension: ".json" });
+    res.json({ files });
   })
 );
 
